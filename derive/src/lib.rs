@@ -222,7 +222,7 @@ fn build_layers(
                             layer
                                 .grid_tiles
                                 .iter()
-                                .map(|TileInstance { d, f, px, src, t }| {
+                                .map(|TileInstance { d: _, f, px, src, t }| {
                                     let flip_x = f & 0x1 != 0;
                                     let flip_y = f & 0x2 != 0;
                                     let position = {
@@ -345,10 +345,10 @@ fn build_fields(field_instances: &[ldtk2::FieldInstance]) -> Vec<TokenStream> {
                         quote! { ::bevy::math::const_ivec2!([#x, #y]) }
                     }
                     name if name.starts_with("LocalEnum.") => {
-                        let local_enum =
+                        let _local_enum =
                             format_ident!("{}", name["LocalEnum.".len()..].to_camel_case());
 
-                        let val = serde_json::from_value::<i64>(value.clone()).unwrap();
+                        let _val = serde_json::from_value::<i64>(value.clone()).unwrap();
 
                         quote! {}
                     }
