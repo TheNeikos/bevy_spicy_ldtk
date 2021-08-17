@@ -1,0 +1,18 @@
+[package]
+name = "bevy-spicy-ldtk"
+version = "0.1.0"
+edition = "2018"
+resolver = "2"
+license = "MIT OR Apache-2.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[workspace]
+members = ["derive"]
+
+[dependencies]
+bevy-spicy-ldtk-derive = { path = "./derive" }
+bevy = { git = "https://github.com/bevyengine/bevy.git", default-features = false }
+
+[dev-dependencies]
+bevy = { git = "https://github.com/bevyengine/bevy.git" }
