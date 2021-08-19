@@ -210,6 +210,10 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "bevy-spicy-ldtk-derive",
+ "ldtk2",
+ "serde",
+ "serde_json",
+ "thiserror",
 ]
 
 [[package]]

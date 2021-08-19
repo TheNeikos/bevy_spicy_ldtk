@@ -1,5 +1,5 @@
 use heck::{CamelCase, SnakeCase};
-use ldtk2::{Ldtk, TileInstance};
+use ldtk2::Ldtk;
 use proc_macro::TokenStream as TStream;
 use proc_macro2::TokenStream;
 use proc_macro_error::{abort, emit_call_site_error, proc_macro_error};
@@ -39,10 +39,6 @@ pub fn ldtk(input: TStream) -> TStream {
 
     let levels = define_levels(&ldtk.defs.level_fields, &ldtk.defs.layers);
 
-    let tilesets = define_tilesets(&ldtk.defs.tilesets);
-
-    let world_levels = build_levels(&ldtk.levels, &ldtk.defs.tilesets);
-
     let expanded = quote! {
         #vis mod #name {
 
@@ -54,420 +50,105 @@ pub fn ldtk(input: TStream) -> TStream {
 
             #levels
 
-            pub mod tilesets {
-                #tilesets
-            }
+            pub const FILEPATH: &'static str = #path;
 
-            pub struct World {
-                pub levels: &'static [Level],
-            }
-
-            pub const Project: World = World {
-                levels: &[#world_levels],
-            };
+            pub type Project = ::bevy_spicy_ldtk::World<
+                LevelFields,
+                ProjectEntities,
+                Layers
+            >;
         }
     };
 
     expanded.into()
 }
 
-fn define_tilesets(tilesets: &[ldtk2::TilesetDefinition]) -> TokenStream {
-    let tilesets = tilesets.iter().map(|tileset| {
-        let ident = format_ident!("{}", tileset.identifier.to_camel_case());
-
-        let grid_size = tileset.tile_grid_size;
-        let identifier = tileset.identifier.as_str();
-        let padding = tileset.padding;
-        let dimensions = {
-            let x = tileset.c_wid as i32;
-            let y = tileset.c_hei as i32;
-
-            quote! {
-                ::bevy::math::const_ivec2!([#x, #y])
-            }
-        };
-        let rel_path = &tileset.rel_path;
-        let id = tileset.uid;
-
-        quote! {
-            pub const #ident: super::Tileset = super::Tileset {
-                grid_size: #grid_size,
-                ident: #identifier,
-                padding: #padding,
-                dimensions: #dimensions,
-                rel_path: #rel_path,
-                id: #id,
-            };
-        }
-    });
-
-    quote! {
-        #(#tilesets)*
-    }
-}
-
-fn build_levels(levels: &[ldtk2::Level], tilesets: &[ldtk2::TilesetDefinition]) -> TokenStream {
-    let levels = levels.iter().map(|level| {
-        let bg_color = color_from_str(&level.bg_color);
-
-        let bg_position = if let Some(_pos) = level.bg_pos.as_ref() {
-            quote! { None }
-        } else {
-            quote! { None }
-        };
-
-        let bg_path = quote! { None };
-
-        let identifier = &level.identifier;
-
-        let height = level.px_hei;
-        let width = level.px_wid;
-
-        let id = level.uid;
-
-        let world_position = {
-            let x = level.world_x as i32;
-            let y = level.world_y as i32;
-
-            quote! { ::bevy::math::const_ivec2!([#x, #y]) }
-        };
-
-        let level_fields = build_fields(&level.field_instances);
-
-        let layer_fields = build_layers(level.layer_instances.as_ref(), &tilesets);
-
-        quote! {
-            Level {
-                background_color: #bg_color,
-                background_position: #bg_position,
-                background_image_path: #bg_path,
-                identifier: #identifier,
-                height: #height,
-                width: #width,
-                id: #id,
-                world_position: #world_position,
-
-                fields: LevelFields {
-                    #(#level_fields),*
-                },
-                layers: LevelLayers {
-                    #(#layer_fields),*
-                },
-            }
-        }
-    });
-
-    quote! {
-        #(#levels),*
-    }
-}
-
-fn build_layers(
-    layer_instances: Option<&Vec<ldtk2::LayerInstance>>,
-    tilesets: &[ldtk2::TilesetDefinition],
-) -> Vec<TokenStream> {
-    if let Some(layer_instances) = layer_instances {
-        layer_instances
-            .iter()
-            .map(|layer| {
-                let layer_ident = format_ident!("{}", layer.identifier.to_camel_case());
-                let layer_kind = format_ident!("{}Layer", layer.identifier.to_camel_case());
-
-                let height = layer.c_hei;
-                let width = layer.c_wid;
-                let grid_size = layer.grid_size;
-                let opacity = layer.opacity;
-                let total_offset = {
-                    let x = layer.px_total_offset_x as i32;
-                    let y = layer.px_total_offset_y as i32;
-
-                    quote! { ::bevy::math::const_ivec2!([#x, #y]) }
-                };
-                let visible = layer.visible;
-
-                let layer_fields: TokenStream = match layer.layer_instance_type.as_str() {
-                    "IntGrid" => {
-                        let values = &layer.int_grid_csv;
-                        quote! {
-                            values: &[#(#values),*],
-                        }
-                    }
-                    "Entities" => {
-                        quote! {}
-                    }
-                    "Tiles" => {
-                        let tileset = {
-                            let tileset = tilesets
-                                .iter()
-                                .find(|set| Some(set.uid) == layer.tileset_def_uid);
-
-                            match tileset {
-                                Some(tileset) => {
-                                    let ident =
-                                        format_ident!("{}", tileset.identifier.to_camel_case());
-
-                                    quote! {&tilesets::#ident}
-                                }
-                                None => {
-                                    emit_call_site_error!(format!(
-                                        "Could not find tileset for layer {}",
-                                        layer.identifier
-                                    ));
-
-                                    quote! {}
-                                }
-                            }
-                        };
-                        let tiles =
-                            layer
-                                .grid_tiles
-                                .iter()
-                                .map(|TileInstance { d: _, f, px, src, t }| {
-                                    let flip_x = f & 0x1 != 0;
-                                    let flip_y = f & 0x2 != 0;
-                                    let position = {
-                                        let x = px[0] as i32;
-                                        let y = px[1] as i32;
-
-                                        quote! {
-                                            ::bevy::math::const_ivec2!([#x, #y])
-                                        }
-                                    };
-
-                                    let src = {
-                                        let x = src[0] as i32;
-                                        let y = src[1] as i32;
-
-                                        quote! {
-                                            ::bevy::math::const_ivec2!([#x, #y])
-                                        }
-                                    };
-
-                                    let id = *t;
-
-                                    quote! {
-                                        Tile {
-                                            flip_x: #flip_x,
-                                            flip_y: #flip_y,
-                                            position: #position,
-                                            src: #src,
-                                            id: #id
-                                        }
-                                    }
-                                });
-
-                        quote! {
-                            tileset: #tileset,
-                            tiles: &[#(#tiles),*],
-                        }
-                    }
-                    "AutoLayer" => quote! {},
-                    layer_kind => {
-                        emit_call_site_error!(format!("Unknown layer kind: {}", layer_kind));
-                        quote! {}
-                    }
-                };
-                quote! {
-                    #layer_ident: #layer_kind {
-                        height: #height,
-                        width: #width,
-                        grid_size: #grid_size,
-                        opacity: #opacity,
-                        total_offset: #total_offset,
-                        visible: #visible,
-                        #layer_fields
-                    }
-                }
-            })
-            .collect()
-    } else {
-        emit_call_site_error!("Split level files are not yet supported");
-        vec![quote! {}]
-    }
-}
-
-fn color_from_str(color: &str) -> TokenStream {
-    if let (Ok(r), Ok(g), Ok(b)) = (
-        color[1..3].parse::<u8>(),
-        color[3..5].parse::<u8>(),
-        color[5..7].parse::<u8>(),
-    ) {
-        quote! { ::bevy::render::color::Color::rgb(#r as f32 / 255., #g as f32 / 255., #b as f32 / 255.) }
-    } else {
-        emit_call_site_error!(format!("Invalid color: {}", color));
-        quote! { () }
-    }
-}
-
-fn build_fields(field_instances: &[ldtk2::FieldInstance]) -> Vec<TokenStream> {
-    field_instances
-        .iter()
-        .map(|field| {
-            let field_ident = format_ident!("{}", field.identifier.to_snake_case());
-            let value = if let Some(value) = field.value.as_ref() {
-                match field.field_instance_type.as_str() {
-                    "Int" => {
-                        let val = serde_json::from_value::<i64>(value.clone()).unwrap();
-
-                        quote! { #val }
-                    }
-                    "Float" => {
-                        let val = serde_json::from_value::<f64>(value.clone()).unwrap();
-
-                        quote! { #val }
-                    }
-                    "String" => {
-                        let val = serde_json::from_value::<String>(value.clone()).unwrap();
-                        let val = val.as_str();
-
-                        quote! { #val }
-                    }
-                    "FilePath" => {
-                        let val = serde_json::from_value::<String>(value.clone()).unwrap();
-                        let val = val.as_str();
-
-                        quote! { #val }
-                    }
-                    "Bool" => {
-                        let val = serde_json::from_value::<bool>(value.clone()).unwrap();
-
-                        quote! { #val }
-                    }
-                    "Color" => {
-                        let val = serde_json::from_value::<String>(value.clone()).unwrap();
-                        let val = color_from_str(&val);
-
-                        quote! { #val }
-                    }
-                    "Point" => {
-                        let (x, y) = serde_json::from_value::<(i32, i32)>(value.clone()).unwrap();
-
-                        quote! { ::bevy::math::const_ivec2!([#x, #y]) }
-                    }
-                    name if name.starts_with("LocalEnum.") => {
-                        let _local_enum =
-                            format_ident!("{}", name["LocalEnum.".len()..].to_camel_case());
-
-                        let _val = serde_json::from_value::<i64>(value.clone()).unwrap();
-
-                        quote! {}
-                    }
-                    kind => {
-                        emit_call_site_error!(format!(
-                            "Could not parse kind: \"{}\". Is this library outdated?",
-                            kind
-                        ));
-                        quote! {}
-                    }
-                }
-            } else {
-                quote! { None }
-            };
-
-            quote! {
-                #field_ident: #value
-            }
-        })
-        .collect()
-}
-
 fn define_levels(
     level_fields: &[ldtk2::FieldDefinition],
     level_layers: &[ldtk2::LayerDefinition],
 ) -> TokenStream {
-    let fields = define_fields(level_fields);
+    let ref custom_idents = level_fields
+        .iter()
+        .map(|def| &def.identifier)
+        .collect::<Vec<_>>();
+    let (ref custom_names, ref custom_types): (Vec<Ident>, Vec<TokenStream>) =
+        define_fields(level_fields).into_iter().unzip();
 
-    let layer_defs = define_layers(level_layers);
     let layers = level_layers.iter().map(|def| {
         let ident = format_ident!("{}", def.identifier.to_camel_case());
-        let ident_kind = format_ident!("{}Layer", def.identifier.to_camel_case());
 
         quote! {
-            pub #ident: #ident_kind
+            pub #ident: ::bevy_spicy_ldtk::Layer<ProjectEntities>
         }
     });
 
+    let ref layer_names = level_layers
+        .iter()
+        .map(|def| format_ident!("{}", def.identifier.to_camel_case()))
+        .collect::<Vec<_>>();
+    let ref layer_idents = level_layers
+        .iter()
+        .map(|def| &def.identifier)
+        .collect::<Vec<_>>();
+
     quote! {
+        #[derive(Debug)]
         pub struct LevelFields {
-            #fields
+            #(pub #custom_names: #custom_types),*
         }
 
-        #layer_defs
+        impl ::bevy_spicy_ldtk::DeserializeLdtkFields for LevelFields {
+            fn deserialize_ldtk(instances: &[ldtk2::FieldInstance]) -> ::bevy_spicy_ldtk::error::LdtkResult<Self> {
+                #(let mut #custom_names: Option<#custom_types> = None;)*
 
-        pub struct LevelLayers {
+                #(
+                    #custom_names = instances.iter().find(|field| field.identifier == #custom_idents)
+                        .and_then(|field| field.value.as_ref())
+                        .map(|value| ::bevy_spicy_ldtk::private::parse_field(value))
+                        .transpose()?;
+                )*
+
+
+                match (#(#custom_names),*) {
+                    (#(Some(#custom_names)),*) => {
+                        Ok(LevelFields {
+                            #(#custom_names),*
+                        })
+                    }
+                    _ => Err(::bevy_spicy_ldtk::error::LdtkError::MissingFieldsForLevels)
+                }
+            }
+        }
+
+        #[derive(Debug)]
+        pub struct Layers {
             #(#layers),*
         }
 
-        pub struct Tile {
-            pub flip_x: bool,
-            pub flip_y: bool,
-            pub position: ::bevy::math::IVec2,
-            pub src: ::bevy::math::IVec2,
-            pub id: i64,
-        }
 
-        pub struct Tileset {
-            pub grid_size: i64,
-            pub ident: &'static str,
-            pub padding: i64,
-            pub dimensions: ::bevy::math::IVec2,
-            pub rel_path: &'static str,
-            pub id: i64,
-        }
+        impl ::bevy_spicy_ldtk::DeserializeLDtkLayers for Layers {
+            type Entities = ProjectEntities;
 
-        pub struct Level {
-            pub background_color: ::bevy::render::color::Color,
-            pub background_position: Option<::bevy::math::IVec2>,
-            pub background_image_path: Option<&'static str>,
-            pub identifier: &'static str,
-            pub height: i64,
-            pub width: i64,
-            pub id: i64,
-            pub world_position: ::bevy::math::IVec2,
+            fn deserialize_ldtk(instances: &[ldtk2::LayerInstance]) -> ::bevy_spicy_ldtk::error::LdtkResult<Self> {
+                #(let mut #layer_names: Option<_> = None;)*
 
-            pub fields: LevelFields,
-            pub layers: LevelLayers,
-        }
-    }
-}
+                #(
+                    #layer_names = instances.iter().find(|layer| layer.identifier == #layer_idents)
+                        .map(|layer| ::bevy_spicy_ldtk::Layer::load(layer))
+                        .transpose()?;
+                )*
 
-fn define_layers(layers: &[ldtk2::LayerDefinition]) -> TokenStream {
-    let layers = layers.iter().map(|def| {
-        let layer_ident = format_ident!("{}Layer", def.identifier.to_camel_case());
 
-        let extra_fields = match def.layer_definition_type.as_str() {
-            "IntGrid" => quote! {
-                values: &'static [i64],
-            },
-            "Entities" => {
-                quote! {}
-            }
-            "Tiles" => quote! {
-                tileset: &'static Tileset,
-                tiles: &'static [Tile]
-            },
-            "AutoLayer" => quote! {},
-            layer_kind => {
-                emit_call_site_error!(format!("Unknown layer kind: {}", layer_kind));
-                quote! {}
-            }
-        };
-
-        quote! {
-            pub struct #layer_ident {
-                pub height: i64,
-                pub width: i64,
-                pub grid_size: i64,
-                pub opacity: f64,
-                pub total_offset: ::bevy::math::IVec2,
-                pub visible: bool,
-                #extra_fields
+                match (#(#layer_names),*) {
+                    (#(Some(#layer_names)),*) => {
+                        Ok(Layers {
+                            #(#layer_names),*
+                        })
+                    }
+                    _ => Err(::bevy_spicy_ldtk::error::LdtkError::MissingFieldsForLayers)
+                }
             }
         }
-    });
-
-    quote! {
-        #(#layers)*
     }
 }
 
@@ -482,6 +163,8 @@ fn define_enums(enums: &[ldtk2::EnumDefinition]) -> TokenStream {
         });
 
         quote! {
+
+            #[derive(Debug, ::bevy_spicy_ldtk::private::Deserialize)]
             pub enum #ident {
                 #(#fields),*
             }
@@ -493,85 +176,170 @@ fn define_enums(enums: &[ldtk2::EnumDefinition]) -> TokenStream {
     }
 }
 
-fn define_entities(entities: &[ldtk2::EntityDefinition]) -> TokenStream {
-    let entities = entities.iter().map(|def| {
+fn define_entities(ldtk_entities: &[ldtk2::EntityDefinition]) -> TokenStream {
+    let entities = ldtk_entities.iter().map(|def| {
         let ident = format_ident!("{}", def.identifier.to_camel_case());
 
         let custom_ident = format_ident!("{}Fields", def.identifier.to_camel_case());
 
-        let custom_fields = define_fields(&def.field_defs);
+        let can_be_null = def.field_defs.iter().map(|def| def.can_be_null.clone());
+        let custom_default = def.field_defs.iter().map(|def| if def.can_be_null { quote! { None } } else { quote!{ unreachable!() }});
+        let custom_idents = def.field_defs.iter().map(|def| def.identifier.clone());
+        let (custom_names, custom_types): (Vec<Ident>, Vec<TokenStream>) =
+            define_fields(&def.field_defs).into_iter().unzip();
 
         quote! {
+            #[derive(Debug)]
             pub struct #custom_ident {
-                #custom_fields
+                #(pub #custom_names: #custom_types),*
             }
 
+            impl ::bevy_spicy_ldtk::DeserializeLdtkFields for #custom_ident {
+                fn deserialize_ldtk(instances: &[ldtk2::FieldInstance]) -> ::bevy_spicy_ldtk::error::LdtkResult<Self> {
+                    #(let #custom_names: #custom_types;)*
+
+                    #(
+                        let tmp: Option<Result<Option<#custom_types>,_>> = instances.iter().find(|field| field.identifier == #custom_idents)
+                            .map(|field| field.value.as_ref())
+                            .map(|value| value.map(|value| ::bevy_spicy_ldtk::private::parse_field(value)).transpose());
+
+                        #custom_names = match tmp {
+                            None => return Err(::bevy_spicy_ldtk::error::LdtkError::MissingFieldsForEntities),
+                            Some(Err(e)) => return Err(e),
+                            Some(Ok(val)) => if let Some(val) = val {
+                                val
+                            } else {
+                                if !#can_be_null {
+                                    return Err(::bevy_spicy_ldtk::error::LdtkError::MissingFieldsForEntities)
+                                } else {
+                                    #custom_default
+                                }
+                            },
+                        };
+                    )*
+                    Ok(#custom_ident {
+                        #(#custom_names,)*
+                    })
+                }
+            }
+
+            #[derive(Debug)]
             pub struct #ident {
                 pub width: i64,
                 pub height: i64,
+                pub position: ::bevy::math::IVec2,
                 pub fields: #custom_ident,
+            }
+
+            impl #ident {
+                fn load(entity: &ldtk2::EntityInstance) -> ::bevy_spicy_ldtk::error::LdtkResult<Self> {
+                    let width = entity.width;
+                    let height = entity.height;
+                    let position = ::bevy::math::IVec2::new(entity.px[0] as i32, entity.px[1] as i32);
+                    let fields = <#custom_ident as ::bevy_spicy_ldtk::DeserializeLdtkFields>::deserialize_ldtk(&entity.field_instances)?;
+
+                    Ok(#ident {
+                        width, height, position, fields
+                    })
+                }
             }
         }
     });
 
+    let entity_identifiers = ldtk_entities.iter().map(|def| &def.identifier);
+    let (ref entity_group_names, ref entity_group_types): (Vec<Ident>, Vec<Ident>) = ldtk_entities
+        .iter()
+        .map(|def| {
+            let ident = format_ident!("all_{}", def.identifier.to_snake_case());
+
+            let custom_ident = format_ident!("{}", def.identifier.to_camel_case());
+
+            (ident, custom_ident)
+        })
+        .unzip();
+
     quote! {
+        #[derive(Debug)]
+        pub struct ProjectEntities {
+            #(pub #entity_group_names: Vec<#entity_group_types>),*
+        }
+
+
+        impl ::bevy_spicy_ldtk::DeserializeLdtkEntities for ProjectEntities {
+            fn deserialize_ldtk(instances: &[ldtk2::EntityInstance]) -> ::bevy_spicy_ldtk::error::LdtkResult<Self> {
+
+                #(let mut #entity_group_names = vec![];)*
+
+                for entity in instances {
+                    match entity.identifier.as_str() {
+                        #(#entity_identifiers => #entity_group_names .push(<#entity_group_types>::load(&entity)?),)*
+                        unknown => return Err(::bevy_spicy_ldtk::error::LdtkError::UnknownEntityType(unknown.to_string())),
+                    }
+                }
+
+                Ok(
+                    ProjectEntities {
+                        #(#entity_group_names),*
+                    }
+                )
+            }
+        }
+
         #(#entities)*
     }
 }
 
-fn define_fields(field_defs: &[ldtk2::FieldDefinition]) -> TokenStream {
-    let fields = field_defs.iter().map(|field| {
-        let is_array = field.field_definition_type.starts_with("Array<");
-        let field_kind = if is_array {
-            &field.field_definition_type["Array<".len()..field.field_definition_type.len() - 1]
-        } else {
-            &field.field_definition_type
-        };
+fn define_fields(field_defs: &[ldtk2::FieldDefinition]) -> Vec<(Ident, TokenStream)> {
+    field_defs
+        .iter()
+        .map(|field| {
+            let is_array = field.field_definition_type.starts_with("Array<");
+            let field_kind = if is_array {
+                &field.field_definition_type["Array<".len()..field.field_definition_type.len() - 1]
+            } else {
+                &field.field_definition_type
+            };
 
-        let can_be_null = field.can_be_null;
+            let can_be_null = field.can_be_null;
 
-        let name = format_ident!("{}", field.identifier.to_snake_case());
+            let name = format_ident!("{}", field.identifier.to_snake_case());
 
-        let kind = match field_kind {
-            "Int" => quote! {i64},
-            "Float" => quote! {f64},
-            "String" => quote! {&'static str},
-            "FilePath" => quote! {&'static str},
-            "Bool" => quote! {bool},
-            "Color" => quote! {::bevy::render::color::Color},
-            "Point" => quote! {::bevy::math::Vec2},
-            name if name.starts_with("LocalEnum.") => {
-                let local_enum = format_ident!("{}", name["LocalEnum.".len()..].to_camel_case());
+            let kind = match field_kind {
+                "Int" => quote! {i64},
+                "Float" => quote! {f64},
+                "String" => quote! {String},
+                "FilePath" => quote! {PathBuf},
+                "Bool" => quote! {bool},
+                "Color" => quote! {::bevy::render::color::Color},
+                "Point" => quote! {::bevy::math::Vec2},
+                name if name.starts_with("LocalEnum.") => {
+                    let local_enum =
+                        format_ident!("{}", name["LocalEnum.".len()..].to_camel_case());
 
-                quote! {enums::#local_enum}
-            }
-            kind => {
-                emit_call_site_error!(format!(
-                    "Could not parse kind: \"{}\". Is this library outdated?",
-                    kind
-                ));
-                quote! {}
-            }
-        };
+                    quote! {enums::#local_enum}
+                }
+                kind => {
+                    emit_call_site_error!(format!(
+                        "Could not parse kind: \"{}\". Is this library outdated?",
+                        kind
+                    ));
+                    quote! {}
+                }
+            };
 
-        let kind = if is_array {
-            quote! {&'static [ #kind ]}
-        } else {
-            kind
-        };
+            let kind = if is_array {
+                quote! {Vec< #kind >}
+            } else {
+                kind
+            };
 
-        let kind = if can_be_null {
-            quote! {Option< #kind >}
-        } else {
-            kind
-        };
+            let kind = if can_be_null {
+                quote! {Option< #kind >}
+            } else {
+                kind
+            };
 
-        quote! {
-            pub #name: #kind
-        }
-    });
-
-    quote! {
-        #(#fields),*
-    }
+            (name, kind)
+        })
+        .collect()
 }
