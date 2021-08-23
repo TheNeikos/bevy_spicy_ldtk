@@ -72,6 +72,25 @@ pub struct Tile {
     pub id: i64,
 }
 
+impl Tile {
+    fn load(tile: &ldtk2::TileInstance) -> LdtkResult<Self> {
+        let flip_x = tile.f & 0x1 == 1;
+        let flip_y = tile.f & 0x2 == 1;
+
+        let position = ::bevy::math::IVec2::new(tile.px[0] as i32, tile.px[1] as i32);
+        let src = ::bevy::math::IVec2::new(tile.src[0] as i32, tile.src[1] as i32);
+        let id = tile.t;
+
+        Ok(Tile {
+            flip_x,
+            flip_y,
+            position,
+            src,
+            id,
+        })
+    }
+}
+
 #[derive(Debug)]
 pub struct Tileset {
     pub grid_size: i64,
@@ -172,6 +191,7 @@ pub struct Layer<EntityFields> {
     pub total_offset: ::bevy::math::IVec2,
     pub visible: bool,
     pub tileset_uid: Option<i64>,
+    pub tiles: Vec<ldtk2::TileInstance>,
 
     pub special: SpecialValues<EntityFields>,
 }
@@ -181,7 +201,12 @@ impl<EntityFields: DeserializeLdtkEntities> Layer<EntityFields> {
         let special = match ldtk_layer.layer_instance_type.as_str() {
             "IntGrid" => {
                 let values = ldtk_layer.int_grid_csv.clone();
-                SpecialValues::IntGrid { values }
+                let auto_layer = ldtk_layer
+                    .auto_layer_tiles
+                    .iter()
+                    .map(Tile::load)
+                    .collect::<LdtkResult<_>>()?;
+                SpecialValues::IntGrid { values, auto_layer }
             }
             "Entities" => {
                 let entities = EntityFields::deserialize_ldtk(&ldtk_layer.entity_instances)?;
@@ -190,11 +215,22 @@ impl<EntityFields: DeserializeLdtkEntities> Layer<EntityFields> {
             }
             "Tiles" => {
                 let tileset = ldtk_layer.tileset_def_uid;
-                let tiles = vec![];
+                let tiles = ldtk_layer
+                    .grid_tiles
+                    .iter()
+                    .map(Tile::load)
+                    .collect::<LdtkResult<_>>()?;
 
                 SpecialValues::Tiles { tileset, tiles }
             }
-            "AutoLayer" => SpecialValues::AutoLayer,
+            "AutoLayer" => {
+                let auto_layer = ldtk_layer
+                    .auto_layer_tiles
+                    .iter()
+                    .map(Tile::load)
+                    .collect::<LdtkResult<_>>()?;
+                SpecialValues::AutoLayer { auto_layer }
+            }
             unknown => return Err(LdtkError::UnknownLayerType(unknown.to_string())),
         };
 
@@ -208,6 +244,7 @@ impl<EntityFields: DeserializeLdtkEntities> Layer<EntityFields> {
         );
         let visible = ldtk_layer.visible;
         let tileset_uid = ldtk_layer.tileset_def_uid;
+        let tiles = ldtk_layer.grid_tiles.clone();
 
         Ok(Layer {
             special,
@@ -218,6 +255,7 @@ impl<EntityFields: DeserializeLdtkEntities> Layer<EntityFields> {
             total_offset,
             visible,
             tileset_uid,
+            tiles,
         })
     }
 }
@@ -226,13 +264,16 @@ impl<EntityFields: DeserializeLdtkEntities> Layer<EntityFields> {
 pub enum SpecialValues<Entities> {
     IntGrid {
         values: Vec<i64>,
+        auto_layer: Vec<Tile>,
     },
     Entities(Entities),
     Tiles {
         tileset: Option<i64>,
         tiles: Vec<Tile>,
     },
-    AutoLayer,
+    AutoLayer {
+        auto_layer: Vec<Tile>,
+    },
 }
 
 #[doc(hidden)]
