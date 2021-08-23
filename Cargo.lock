@@ -135,7 +135,7 @@ checksum = "23b62fc65de8e4e7f52534fb52b0f3ed04746ae267519eef2a83941e8085068b"
 [[package]]
 name = "aseprite-reader"
 version = "0.1.0"
-source = "git+https://github.com/TheNeikos/aseprite-reader.git#a4fa7ecb3b863cd417a41d2c37139e300683a88c"
+source = "git+https://github.com/TheNeikos/aseprite-reader.git#d67734afb5db63262c2f5e0a13d0eaf4b4d614b4"
 dependencies = [
  "flate2",
  "image",
@@ -388,7 +388,7 @@ dependencies = [
 [[package]]
 name = "bevy_ecs_tilemap"
 version = "0.4.0"
-source = "git+https://github.com/TheNeikos/bevy_ecs_tilemap?branch=bevy-track#8069f5442581492c69a9c9b7b75b7a7411db86d6"
+source = "git+https://github.com/TheNeikos/bevy_ecs_tilemap?branch=bevy-track#1c034fa6188afd58b8d3b55630059f08814c2477"
 dependencies = [
  "bevy",
  "bytemuck",
@@ -601,7 +601,7 @@ dependencies = [
 [[package]]
 name = "bevy_spicy_aseprite"
 version = "0.1.0"
-source = "git+https://github.com/TheNeikos/bevy-spicy-aseprite.git#557546698fc28f2974f2873d17ab1181b3144733"
+source = "git+https://github.com/TheNeikos/bevy-spicy-aseprite.git#3a0458490019cc755629fb130cf794a69ee1fe49"
 dependencies = [
  "anyhow",
  "aseprite-reader",
@@ -613,7 +613,7 @@ dependencies = [
 [[package]]
 name = "bevy_spicy_aseprite_derive"
 version = "0.1.0"
-source = "git+https://github.com/TheNeikos/bevy-spicy-aseprite.git#557546698fc28f2974f2873d17ab1181b3144733"
+source = "git+https://github.com/TheNeikos/bevy-spicy-aseprite.git#3a0458490019cc755629fb130cf794a69ee1fe49"
 dependencies = [
  "aseprite-reader",
  "heck",
@@ -1990,9 +1990,9 @@ dependencies = [
 
 [[package]]
 name = "itoa"
-version = "0.4.7"
+version = "0.4.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd25036021b0de88a0aff6b850051563c6516d0bf53f8638938edbb9de732736"
+checksum = "b71991ff56294aa922b450139ee08b3bfc70982c6b2c7562771375cf73542dd4"
 
 [[package]]
 name = "jni"
@@ -3014,18 +3014,18 @@ checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 
 [[package]]
 name = "serde"
-version = "1.0.127"
+version = "1.0.128"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f03b9878abf6d14e6779d3f24f07b2cfa90352cfec4acc5aab8f1ac7f146fae8"
+checksum = "1056a0db1978e9dbf0f6e4fca677f6f9143dc1c19de346f22cac23e422196834"
 dependencies = [
  "serde_derive",
 ]
 
 [[package]]
 name = "serde_derive"
-version = "1.0.127"
+version = "1.0.128"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a024926d3432516606328597e0f224a51355a493b49fdd67e9209187cbe55ecc"
+checksum = "13af2fbb8b60a8950d6c72a56d2095c28870367cc8e10c55e9745bac4995a2c4"
 dependencies = [
  "proc-macro2",
  "quote",

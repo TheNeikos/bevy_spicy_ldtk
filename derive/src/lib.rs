@@ -1,7 +1,7 @@
 use std::{path::PathBuf, str::FromStr};
 
 use heck::{CamelCase, SnakeCase};
-use ldtk2::Ldtk;
+use ldtk2::{EntityDefinition, EnumDefinition, FieldDefinition, LayerDefinition, Ldtk, TilesetDefinition};
 use proc_macro::TokenStream as TStream;
 use proc_macro2::TokenStream;
 use proc_macro_error::{abort, emit_call_site_error, proc_macro_error};
@@ -71,7 +71,7 @@ pub fn ldtk(input: TStream) -> TStream {
     expanded.into()
 }
 
-fn define_aseprite_tilesets(path: &str, tilesets: &[ldtk2::TilesetDefinition]) -> TokenStream {
+fn define_aseprite_tilesets(path: &str, tilesets: &[TilesetDefinition]) -> TokenStream {
     let tilesets = tilesets.iter().map(|def| {
         if def.rel_path.ends_with(".aseprite") || def.rel_path.ends_with(".ase") {
             let mut path = PathBuf::from_str(path).unwrap();
@@ -97,8 +97,8 @@ fn define_aseprite_tilesets(path: &str, tilesets: &[ldtk2::TilesetDefinition]) -
 }
 
 fn define_levels(
-    level_fields: &[ldtk2::FieldDefinition],
-    level_layers: &[ldtk2::LayerDefinition],
+    level_fields: &[FieldDefinition],
+    level_layers: &[LayerDefinition],
 ) -> TokenStream {
     let ref custom_idents = level_fields
         .iter()
@@ -131,7 +131,7 @@ fn define_levels(
         }
 
         impl ::bevy_spicy_ldtk::DeserializeLdtkFields for LevelFields {
-            fn deserialize_ldtk(instances: &[ldtk2::FieldInstance]) -> ::bevy_spicy_ldtk::error::LdtkResult<Self> {
+            fn deserialize_ldtk(instances: &[::bevy_spicy_ldtk::private::ldtk2::FieldInstance]) -> ::bevy_spicy_ldtk::error::LdtkResult<Self> {
                 #(let mut #custom_names: Option<#custom_types> = None;)*
 
                 #(
@@ -162,7 +162,7 @@ fn define_levels(
         impl ::bevy_spicy_ldtk::DeserializeLDtkLayers for Layers {
             type Entities = ProjectEntities;
 
-            fn deserialize_ldtk(instances: &[ldtk2::LayerInstance]) -> ::bevy_spicy_ldtk::error::LdtkResult<Self> {
+            fn deserialize_ldtk(instances: &[::bevy_spicy_ldtk::private::ldtk2::LayerInstance]) -> ::bevy_spicy_ldtk::error::LdtkResult<Self> {
                 #(let mut #layer_names: Option<_> = None;)*
 
                 #(
@@ -185,7 +185,7 @@ fn define_levels(
     }
 }
 
-fn define_enums(enums: &[ldtk2::EnumDefinition]) -> TokenStream {
+fn define_enums(enums: &[EnumDefinition]) -> TokenStream {
     let enums = enums.iter().map(|def| {
         let ident = format_ident!("{}", def.identifier.to_camel_case());
 
@@ -209,7 +209,7 @@ fn define_enums(enums: &[ldtk2::EnumDefinition]) -> TokenStream {
     }
 }
 
-fn define_entities(ldtk_entities: &[ldtk2::EntityDefinition]) -> TokenStream {
+fn define_entities(ldtk_entities: &[EntityDefinition]) -> TokenStream {
     let entities = ldtk_entities.iter().map(|def| {
         let ident = format_ident!("{}", def.identifier.to_camel_case());
 
@@ -228,7 +228,7 @@ fn define_entities(ldtk_entities: &[ldtk2::EntityDefinition]) -> TokenStream {
             }
 
             impl ::bevy_spicy_ldtk::DeserializeLdtkFields for #custom_ident {
-                fn deserialize_ldtk(instances: &[ldtk2::FieldInstance]) -> ::bevy_spicy_ldtk::error::LdtkResult<Self> {
+                fn deserialize_ldtk(instances: &[::bevy_spicy_ldtk::private::ldtk2::FieldInstance]) -> ::bevy_spicy_ldtk::error::LdtkResult<Self> {
                     #(let #custom_names: #custom_types;)*
 
                     #(
@@ -265,7 +265,7 @@ fn define_entities(ldtk_entities: &[ldtk2::EntityDefinition]) -> TokenStream {
             }
 
             impl #ident {
-                fn load(entity: &ldtk2::EntityInstance) -> ::bevy_spicy_ldtk::error::LdtkResult<Self> {
+                fn load(entity: &::bevy_spicy_ldtk::private::ldtk2::EntityInstance) -> ::bevy_spicy_ldtk::error::LdtkResult<Self> {
                     let width = entity.width;
                     let height = entity.height;
                     let position = ::bevy::math::IVec2::new(entity.px[0] as i32, entity.px[1] as i32);
@@ -299,7 +299,7 @@ fn define_entities(ldtk_entities: &[ldtk2::EntityDefinition]) -> TokenStream {
 
 
         impl ::bevy_spicy_ldtk::DeserializeLdtkEntities for ProjectEntities {
-            fn deserialize_ldtk(instances: &[ldtk2::EntityInstance]) -> ::bevy_spicy_ldtk::error::LdtkResult<Self> {
+            fn deserialize_ldtk(instances: &[::bevy_spicy_ldtk::private::ldtk2::EntityInstance]) -> ::bevy_spicy_ldtk::error::LdtkResult<Self> {
 
                 #(let mut #entity_group_names = vec![];)*
 
@@ -322,7 +322,7 @@ fn define_entities(ldtk_entities: &[ldtk2::EntityDefinition]) -> TokenStream {
     }
 }
 
-fn define_fields(field_defs: &[ldtk2::FieldDefinition]) -> Vec<(Ident, TokenStream)> {
+fn define_fields(field_defs: &[FieldDefinition]) -> Vec<(Ident, TokenStream)> {
     field_defs
         .iter()
         .map(|field| {

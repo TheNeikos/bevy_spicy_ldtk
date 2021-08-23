@@ -230,12 +230,13 @@ pub enum SpecialValues<Entities> {
 
 #[doc(hidden)]
 pub mod private {
-    use serde::de::DeserializeOwned;
-    pub use serde::Deserialize;
-
-    pub use bevy_spicy_aseprite::aseprite;
-
     use crate::error::LdtkResult;
+    use serde::de::DeserializeOwned;
+
+    // Re-exports for the derive crate
+    pub use bevy_spicy_aseprite::aseprite;
+    pub use ldtk2;
+    pub use serde::Deserialize;
 
     pub fn parse_field<T: DeserializeOwned>(field: &serde_json::Value) -> LdtkResult<T> {
         Ok(serde_json::from_value(field.clone())?)
