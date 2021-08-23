@@ -20,6 +20,10 @@ pub trait DeserializeLdtkFields: Sized {
     fn deserialize_ldtk(instances: &[ldtk2::FieldInstance]) -> LdtkResult<Self>;
 }
 
+pub trait DeserializeLdtk: Sized {
+    fn deserialize_ldtk(ldtk: &ldtk2::Coordinate) -> LdtkResult<Self>;
+}
+
 #[derive(Debug)]
 pub struct World<
     LevelFields: DeserializeLdtkFields,
@@ -35,9 +39,9 @@ impl<
         LevelFields: DeserializeLdtkFields,
         Entities: DeserializeLdtkEntities,
         Layers: DeserializeLDtkLayers<Entities = Entities>,
-    > World<LevelFields, Entities, Layers>
+    > DeserializeLdtk for World<LevelFields, Entities, Layers>
 {
-    pub fn load(ldtk: &ldtk2::Ldtk) -> LdtkResult<Self> {
+    fn deserialize_ldtk(ldtk: &ldtk2::Ldtk) -> LdtkResult<Self> {
         let levels = ldtk
             .levels
             .iter()
