@@ -171,6 +171,7 @@ pub struct Layer<EntityFields> {
     pub opacity: f64,
     pub total_offset: ::bevy::math::IVec2,
     pub visible: bool,
+    pub tileset_uid: Option<i64>,
 
     pub special: SpecialValues<EntityFields>,
 }
@@ -206,6 +207,7 @@ impl<EntityFields: DeserializeLdtkEntities> Layer<EntityFields> {
             ldtk_layer.px_total_offset_y as i32,
         );
         let visible = ldtk_layer.visible;
+        let tileset_uid = ldtk_layer.tileset_def_uid;
 
         Ok(Layer {
             special,
@@ -215,6 +217,7 @@ impl<EntityFields: DeserializeLdtkEntities> Layer<EntityFields> {
             opacity,
             total_offset,
             visible,
+            tileset_uid,
         })
     }
 }
