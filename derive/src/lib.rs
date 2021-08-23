@@ -1,3 +1,5 @@
+use std::{path::PathBuf, str::FromStr};
+
 use heck::{CamelCase, SnakeCase};
 use ldtk2::Ldtk;
 use proc_macro::TokenStream as TStream;
@@ -39,6 +41,8 @@ pub fn ldtk(input: TStream) -> TStream {
 
     let levels = define_levels(&ldtk.defs.level_fields, &ldtk.defs.layers);
 
+    let aseprite_tilesets = define_aseprite_tilesets(&path.value(), &ldtk.defs.tilesets);
+
     let expanded = quote! {
         #vis mod #name {
 
@@ -52,6 +56,10 @@ pub fn ldtk(input: TStream) -> TStream {
 
             pub const FILEPATH: &'static str = #path;
 
+            pub mod aseprite_tilesets {
+                #aseprite_tilesets
+            }
+
             pub type Project = ::bevy_spicy_ldtk::World<
                 LevelFields,
                 ProjectEntities,
@@ -61,6 +69,31 @@ pub fn ldtk(input: TStream) -> TStream {
     };
 
     expanded.into()
+}
+
+fn define_aseprite_tilesets(path: &str, tilesets: &[ldtk2::TilesetDefinition]) -> TokenStream {
+    let tilesets = tilesets.iter().map(|def| {
+        if def.rel_path.ends_with(".aseprite") || def.rel_path.ends_with(".ase") {
+            let mut path = PathBuf::from_str(path).unwrap();
+            path.pop();
+            path.push(&def.rel_path);
+
+            let path = path.to_str().unwrap();
+            println!("{}", path);
+
+            let ident = format_ident!("{}", def.identifier.to_camel_case());
+
+            quote! {
+                ::bevy_spicy_ldtk::private::aseprite!(#ident, #path);
+            }
+        } else {
+            quote! {}
+        }
+    });
+
+    quote! {
+        #(#tilesets)*
+    }
 }
 
 fn define_levels(

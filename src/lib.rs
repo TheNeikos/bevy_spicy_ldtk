@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use bevy::math::IVec2;
+use bevy::{math::IVec2, utils::HashMap};
 pub use bevy_spicy_ldtk_derive::ldtk;
 use error::{LdtkError, LdtkResult};
 
@@ -27,6 +27,7 @@ pub struct World<
     Layers: DeserializeLDtkLayers<Entities = Entities>,
 > {
     pub levels: Vec<Level<LevelFields, Entities, Layers>>,
+    pub tilesets: HashMap<i64, Tileset>,
     _entities: PhantomData<Entities>,
 }
 
@@ -43,8 +44,16 @@ impl<
             .map(Level::load)
             .collect::<LdtkResult<_>>()?;
 
+        let tilesets = ldtk
+            .defs
+            .tilesets
+            .iter()
+            .map(|def| Ok((def.uid, Tileset::load(def)?)))
+            .collect::<LdtkResult<_>>()?;
+
         Ok(World {
             levels,
+            tilesets,
             _entities: PhantomData,
         })
     }
@@ -62,11 +71,31 @@ pub struct Tile {
 #[derive(Debug)]
 pub struct Tileset {
     pub grid_size: i64,
-    pub ident: &'static str,
+    pub ident: String,
     pub padding: i64,
     pub dimensions: ::bevy::math::IVec2,
-    pub rel_path: &'static str,
+    pub rel_path: String,
     pub id: i64,
+}
+
+impl Tileset {
+    fn load(tileset: &ldtk2::TilesetDefinition) -> LdtkResult<Self> {
+        let grid_size = tileset.tile_grid_size;
+        let ident = tileset.identifier.clone();
+        let padding = tileset.padding;
+        let dimensions = IVec2::new(tileset.c_wid as i32, tileset.c_hei as i32);
+        let rel_path = tileset.rel_path.clone();
+        let id = tileset.uid;
+
+        Ok(Tileset {
+            grid_size,
+            ident,
+            padding,
+            dimensions,
+            rel_path,
+            id,
+        })
+    }
 }
 
 #[derive(Debug)]
@@ -203,6 +232,8 @@ pub enum SpecialValues<Entities> {
 pub mod private {
     use serde::de::DeserializeOwned;
     pub use serde::Deserialize;
+
+    pub use bevy_spicy_aseprite::aseprite;
 
     use crate::error::LdtkResult;
 
