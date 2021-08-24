@@ -32,6 +32,7 @@ pub struct World<
 > {
     pub levels: Vec<Level<LevelFields, Entities, Layers>>,
     pub tilesets: HashMap<i64, Tileset>,
+    pub layer_definitions: HashMap<i64, LayerDefinition>,
     _entities: PhantomData<Entities>,
 }
 
@@ -55,9 +56,17 @@ impl<
             .map(|def| Ok((def.uid, Tileset::load(def)?)))
             .collect::<LdtkResult<_>>()?;
 
+        let layer_definitions = ldtk
+            .defs
+            .layers
+            .iter()
+            .map(|def| Ok((def.uid, LayerDefinition::load(def)?)))
+            .collect::<LdtkResult<_>>()?;
+
         Ok(World {
             levels,
             tilesets,
+            layer_definitions,
             _entities: PhantomData,
         })
     }
@@ -119,6 +128,55 @@ impl Tileset {
             id,
         })
     }
+}
+
+#[derive(Debug)]
+pub struct LayerDefinition {
+    pub id: i64,
+    pub special: SpecialLayerDefinitions,
+}
+
+impl LayerDefinition {
+    fn load(layer_definition: &ldtk2::LayerDefinition) -> LdtkResult<Self> {
+        let id = layer_definition.uid;
+        let special = match layer_definition.purple_type {
+            ldtk2::Type::AutoLayer => SpecialLayerDefinitions::AutoLayer,
+            ldtk2::Type::Entities => SpecialLayerDefinitions::Entities,
+            ldtk2::Type::IntGrid => SpecialLayerDefinitions::IntGrid {
+                value_definitions: layer_definition
+                    .int_grid_values
+                    .iter()
+                    .map(|def| IntGridValueDefinition {
+                        color: bevy::prelude::Color::hex(&def.color[1..]).unwrap(),
+                        identifier: def.identifier.clone(),
+                        value: def.value,
+                    })
+                    .collect(),
+            },
+            ldtk2::Type::Tiles => SpecialLayerDefinitions::Tiles,
+        };
+
+        Ok(LayerDefinition { id, special })
+    }
+}
+
+#[derive(Debug)]
+pub enum SpecialLayerDefinitions {
+    IntGrid {
+        value_definitions: Vec<IntGridValueDefinition>,
+    },
+    Entities,
+    Tiles,
+    AutoLayer,
+}
+
+#[derive(Debug)]
+pub struct IntGridValueDefinition {
+    pub color: bevy::render::color::Color,
+    /// Unique String identifier
+    pub identifier: Option<String>,
+    /// The IntGrid value itself
+    pub value: i64,
 }
 
 #[derive(Debug)]
@@ -192,6 +250,7 @@ pub struct Layer<EntityFields> {
     pub visible: bool,
     pub tileset_uid: Option<i64>,
     pub tiles: Vec<ldtk2::TileInstance>,
+    pub layer_definition: i64,
 
     pub special: SpecialValues<EntityFields>,
 }
@@ -245,6 +304,7 @@ impl<EntityFields: DeserializeLdtkEntities> Layer<EntityFields> {
         let visible = ldtk_layer.visible;
         let tileset_uid = ldtk_layer.tileset_def_uid;
         let tiles = ldtk_layer.grid_tiles.clone();
+        let layer_definition = ldtk_layer.layer_def_uid;
 
         Ok(Layer {
             special,
@@ -256,6 +316,7 @@ impl<EntityFields: DeserializeLdtkEntities> Layer<EntityFields> {
             visible,
             tileset_uid,
             tiles,
+            layer_definition,
         })
     }
 }
