@@ -32,6 +32,7 @@ pub struct World<
 > {
     pub levels: Vec<Level<LevelFields, Entities, Layers>>,
     pub tilesets: HashMap<i64, Tileset>,
+    pub layer_definitions: HashMap<i64, LayerDefinition>,
     _entities: PhantomData<Entities>,
 }
 
@@ -55,9 +56,17 @@ impl<
             .map(|def| Ok((def.uid, Tileset::load(def)?)))
             .collect::<LdtkResult<_>>()?;
 
+        let layer_definitions = ldtk
+            .defs
+            .layers
+            .iter()
+            .map(|def| Ok((def.uid, LayerDefinition::load(def)?)))
+            .collect::<LdtkResult<_>>()?;
+
         Ok(World {
             levels,
             tilesets,
+            layer_definitions,
             _entities: PhantomData,
         })
     }
@@ -116,6 +125,21 @@ impl Tileset {
             padding,
             dimensions,
             rel_path,
+            id,
+        })
+    }
+}
+
+#[derive(Debug)]
+pub struct LayerDefinition {
+    pub id: i64,
+}
+
+impl LayerDefinition {
+    fn load(layer_definition: &ldtk2::LayerDefinition) -> LdtkResult<Self> {
+        let id = layer_definition.uid;
+
+        Ok(LayerDefinition {
             id,
         })
     }
@@ -192,6 +216,7 @@ pub struct Layer<EntityFields> {
     pub visible: bool,
     pub tileset_uid: Option<i64>,
     pub tiles: Vec<ldtk2::TileInstance>,
+    pub layer_definition: i64,
 
     pub special: SpecialValues<EntityFields>,
 }
@@ -245,6 +270,7 @@ impl<EntityFields: DeserializeLdtkEntities> Layer<EntityFields> {
         let visible = ldtk_layer.visible;
         let tileset_uid = ldtk_layer.tileset_def_uid;
         let tiles = ldtk_layer.grid_tiles.clone();
+        let layer_definition = ldtk_layer.layer_def_uid;
 
         Ok(Layer {
             special,
@@ -256,6 +282,7 @@ impl<EntityFields: DeserializeLdtkEntities> Layer<EntityFields> {
             visible,
             tileset_uid,
             tiles,
+            layer_definition,
         })
     }
 }
