@@ -108,7 +108,7 @@ fn define_levels(
         define_fields(level_fields).into_iter().unzip();
 
     let layers = level_layers.iter().map(|def| {
-        let ident = format_ident!("{}", def.identifier.to_camel_case());
+        let ident = format_ident!("{}", def.identifier.to_snake_case());
 
         quote! {
             pub #ident: ::bevy_spicy_ldtk::Layer<ProjectEntities>
@@ -117,7 +117,7 @@ fn define_levels(
 
     let ref layer_names = level_layers
         .iter()
-        .map(|def| format_ident!("{}", def.identifier.to_camel_case()))
+        .map(|def| format_ident!("{}", def.identifier.to_snake_case()))
         .collect::<Vec<_>>();
     let ref layer_idents = level_layers
         .iter()

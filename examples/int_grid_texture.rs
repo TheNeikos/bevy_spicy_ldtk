@@ -31,7 +31,7 @@ fn generate_texture(
     project: Res<levels::Project>,
 ) {
     let level = &project.levels[0];
-    let layer = &level.layers.IntGridExampleLayer;
+    let layer = &level.layers.int_grid_example_layer;
     let values = match &layer.special {
         SpecialValues::IntGrid {
             values,
