@@ -54,8 +54,9 @@ fn generate_texture(
 
     let buffer = values.iter().flat_map(|i| colors[*i as usize]).collect();
 
+    let dimension = layer.dimensions_cell.as_u32();
     let mut texture = Texture::new(
-        Extent3d::new(layer.width as u32, layer.height as u32, 1),
+        Extent3d::new(dimension.x, dimension.y, 1),
         TextureDimension::D2,
         buffer,
         TextureFormat::Rgba8Unorm,
