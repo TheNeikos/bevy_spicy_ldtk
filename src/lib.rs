@@ -76,8 +76,8 @@ impl<
 pub struct Tile {
     pub flip_x: bool,
     pub flip_y: bool,
-    pub position: ::bevy::math::IVec2,
-    pub src: ::bevy::math::IVec2,
+    pub position_px: ::bevy::math::IVec2,
+    pub src_px: ::bevy::math::IVec2,
     pub id: i64,
 }
 
@@ -86,15 +86,15 @@ impl Tile {
         let flip_x = tile.f & 0x1 == 1;
         let flip_y = tile.f & 0x2 == 1;
 
-        let position = ::bevy::math::IVec2::new(tile.px[0] as i32, tile.px[1] as i32);
-        let src = ::bevy::math::IVec2::new(tile.src[0] as i32, tile.src[1] as i32);
+        let position_px = ::bevy::math::IVec2::new(tile.px[0] as i32, tile.px[1] as i32);
+        let src_px = ::bevy::math::IVec2::new(tile.src[0] as i32, tile.src[1] as i32);
         let id = tile.t;
 
         Ok(Tile {
             flip_x,
             flip_y,
-            position,
-            src,
+            position_px,
+            src_px,
             id,
         })
     }
@@ -105,7 +105,7 @@ pub struct Tileset {
     pub grid_size: i64,
     pub ident: String,
     pub padding: i64,
-    pub dimensions: ::bevy::math::IVec2,
+    pub dimensions_cell: ::bevy::math::IVec2,
     pub rel_path: String,
     pub id: i64,
 }
@@ -115,7 +115,7 @@ impl Tileset {
         let grid_size = tileset.tile_grid_size;
         let ident = tileset.identifier.clone();
         let padding = tileset.padding;
-        let dimensions = IVec2::new(tileset.c_wid as i32, tileset.c_hei as i32);
+        let dimensions_cell = IVec2::new(tileset.c_wid as i32, tileset.c_hei as i32);
         let rel_path = tileset.rel_path.clone();
         let id = tileset.uid;
 
@@ -123,7 +123,7 @@ impl Tileset {
             grid_size,
             ident,
             padding,
-            dimensions,
+            dimensions_cell,
             rel_path,
             id,
         })
@@ -186,11 +186,10 @@ pub struct Level<
     Layers: DeserializeLDtkLayers<Entities = Entities>,
 > {
     pub background_color: ::bevy::render::color::Color,
-    pub background_position: Option<::bevy::math::IVec2>,
+    pub background_position_px: Option<::bevy::math::IVec2>,
     pub background_image_path: Option<String>,
     pub identifier: String,
-    pub height: i64,
-    pub width: i64,
+    pub dimensions_px: ::bevy::math::IVec2,
     pub id: i64,
     pub world_position: ::bevy::math::IVec2,
 
@@ -212,15 +211,14 @@ impl<
         let layers = Layers::deserialize_ldtk(&ldtk_level.layer_instances.as_ref().unwrap())?;
 
         let background_color = bevy::prelude::Color::hex(&ldtk_level.bg_color[1..]).unwrap();
-        let background_position = ldtk_level
+        let background_position_px = ldtk_level
             .bg_pos
             .as_ref()
             .map(|pos| IVec2::new(pos.top_left_px[0] as i32, pos.top_left_px[0] as i32));
 
         let background_image_path = ldtk_level.bg_rel_path.clone();
         let identifier = ldtk_level.identifier.clone();
-        let height = ldtk_level.px_hei;
-        let width = ldtk_level.px_wid;
+        let dimensions_px = IVec2::new(ldtk_level.px_wid as i32, ldtk_level.px_hei as i32);
         let id = ldtk_level.uid;
         let world_position = IVec2::new(ldtk_level.world_x as i32, ldtk_level.world_y as i32);
 
@@ -228,11 +226,10 @@ impl<
             fields,
             layers,
             background_color,
-            background_position,
+            background_position_px,
             background_image_path,
             identifier,
-            height,
-            width,
+            dimensions_px,
             id,
             world_position,
             _entities: PhantomData,
@@ -242,11 +239,10 @@ impl<
 
 #[derive(Debug)]
 pub struct Layer<EntityFields> {
-    pub height: i64,
-    pub width: i64,
+    pub dimensions_cell: IVec2,
     pub grid_size: i64,
     pub opacity: f64,
-    pub total_offset: ::bevy::math::IVec2,
+    pub total_offset_px: ::bevy::math::IVec2,
     pub visible: bool,
     pub tileset_uid: Option<i64>,
     pub tiles: Vec<ldtk2::TileInstance>,
@@ -293,11 +289,10 @@ impl<EntityFields: DeserializeLdtkEntities> Layer<EntityFields> {
             unknown => return Err(LdtkError::UnknownLayerType(unknown.to_string())),
         };
 
-        let height = ldtk_layer.c_hei;
-        let width = ldtk_layer.c_wid;
+        let dimensions_cell = IVec2::new(ldtk_layer.c_wid as i32, ldtk_layer.c_hei as i32);
         let grid_size = ldtk_layer.grid_size;
         let opacity = ldtk_layer.opacity;
-        let total_offset = IVec2::new(
+        let total_offset_px = IVec2::new(
             ldtk_layer.px_total_offset_x as i32,
             ldtk_layer.px_total_offset_y as i32,
         );
@@ -308,11 +303,10 @@ impl<EntityFields: DeserializeLdtkEntities> Layer<EntityFields> {
 
         Ok(Layer {
             special,
-            height,
-            width,
+            dimensions_cell,
             grid_size,
             opacity,
-            total_offset,
+            total_offset_px,
             visible,
             tileset_uid,
             tiles,
