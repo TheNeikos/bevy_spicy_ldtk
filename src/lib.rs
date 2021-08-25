@@ -85,11 +85,12 @@ pub struct Tile {
 }
 
 impl Tile {
-    fn load(tile: &ldtk2::TileInstance) -> LdtkResult<Self> {
+    fn load(tile: &ldtk2::TileInstance, dimensions_cell: IVec2) -> LdtkResult<Self> {
         let flip_x = tile.f & 0x1 == 1;
         let flip_y = tile.f & 0x2 == 1;
 
-        let position_px = ::bevy::math::IVec2::new(tile.px[0] as i32, tile.px[1] as i32);
+        let position_px =
+            ::bevy::math::IVec2::new(tile.px[0] as i32, -tile.px[1] as i32 + dimensions_cell.y);
         let src_px = ::bevy::math::IVec2::new(tile.src[0] as i32, tile.src[1] as i32);
         let id = tile.t;
 
@@ -251,7 +252,6 @@ pub struct Layer<EntityFields> {
     pub total_offset_px: ::bevy::math::IVec2,
     pub visible: bool,
     pub tileset_uid: Option<i64>,
-    pub tiles: Vec<ldtk2::TileInstance>,
     pub layer_definition: i64,
 
     pub special: SpecialValues<EntityFields>,
@@ -274,7 +274,6 @@ impl<EntityFields: DeserializeLdtkEntities> Layer<EntityFields> {
         );
         let visible = ldtk_layer.visible;
         let tileset_uid = ldtk_layer.tileset_def_uid;
-        let tiles = ldtk_layer.grid_tiles.clone();
         let layer_definition = ldtk_layer.layer_def_uid;
 
         let special = match ldtk_layer.layer_instance_type.as_str() {
@@ -286,7 +285,7 @@ impl<EntityFields: DeserializeLdtkEntities> Layer<EntityFields> {
                     ldtk_layer
                         .auto_layer_tiles
                         .iter()
-                        .map(Tile::load)
+                        .map(|tile| Tile::load(tile, dimensions_cell))
                         .collect::<LdtkResult<Vec<_>>>()?,
                     ldtk_layer.c_wid as usize,
                 );
@@ -307,7 +306,7 @@ impl<EntityFields: DeserializeLdtkEntities> Layer<EntityFields> {
                     ldtk_layer
                         .grid_tiles
                         .iter()
-                        .map(Tile::load)
+                        .map(|tile| Tile::load(tile, dimensions_cell))
                         .collect::<LdtkResult<_>>()?,
                     ldtk_layer.c_wid as usize,
                 );
@@ -319,7 +318,7 @@ impl<EntityFields: DeserializeLdtkEntities> Layer<EntityFields> {
                     ldtk_layer
                         .auto_layer_tiles
                         .iter()
-                        .map(Tile::load)
+                        .map(|tile| Tile::load(tile, dimensions_cell))
                         .collect::<LdtkResult<Vec<_>>>()?,
                     ldtk_layer.c_wid as usize,
                 );
@@ -337,7 +336,6 @@ impl<EntityFields: DeserializeLdtkEntities> Layer<EntityFields> {
             total_offset_px,
             visible,
             tileset_uid,
-            tiles,
             layer_definition,
         })
     }
