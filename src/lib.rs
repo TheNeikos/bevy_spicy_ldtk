@@ -85,12 +85,12 @@ pub struct Tile {
 }
 
 impl Tile {
-    fn load(tile: &ldtk2::TileInstance, dimensions_cell: IVec2) -> LdtkResult<Self> {
+    fn load(tile: &ldtk2::TileInstance, dimensions_px: IVec2) -> LdtkResult<Self> {
         let flip_x = tile.f & 0x1 == 1;
         let flip_y = tile.f & 0x2 == 1;
 
         let position_px =
-            ::bevy::math::IVec2::new(tile.px[0] as i32, -tile.px[1] as i32 + dimensions_cell.y);
+            ::bevy::math::IVec2::new(tile.px[0] as i32, -tile.px[1] as i32 + dimensions_px.y);
         let src_px = ::bevy::math::IVec2::new(tile.src[0] as i32, tile.src[1] as i32);
         let id = tile.t;
 
@@ -285,7 +285,7 @@ impl<EntityFields: DeserializeLdtkEntities> Layer<EntityFields> {
                     ldtk_layer
                         .auto_layer_tiles
                         .iter()
-                        .map(|tile| Tile::load(tile, dimensions_cell))
+                        .map(|tile| Tile::load(tile, dimensions_cell * grid_size as i32))
                         .collect::<LdtkResult<Vec<_>>>()?,
                     ldtk_layer.c_wid as usize,
                 );
