@@ -92,7 +92,7 @@ impl Tile {
 
         let position_px = ::bevy::math::IVec2::new(
             tile.px[0] as i32,
-            -tile.px[1] as i32 - layer_dimensions_px.y - 1,
+            -tile.px[1] as i32 - layer_dimensions_px.y,
         );
         let src_px = ::bevy::math::IVec2::new(tile.src[0] as i32, tile.src[1] as i32);
         let id = tile.t;
