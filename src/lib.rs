@@ -226,7 +226,7 @@ impl<
         let id = ldtk_level.uid;
         let world_position_px = IVec2::new(
             ldtk_level.world_x as i32,
-            -ldtk_level.world_y as i32 - dimensions_px.y - 1,
+            -ldtk_level.world_y as i32 - dimensions_px.y,
         );
 
         Ok(Level {
