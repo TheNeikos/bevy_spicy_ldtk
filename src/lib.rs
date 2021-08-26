@@ -90,7 +90,7 @@ impl Tile {
         let flip_y = tile.f & 0x2 == 1;
 
         let position_px =
-            ::bevy::math::IVec2::new(tile.px[0] as i32, -tile.px[1] as i32 + layer_dimensions_px.y - 1);
+            ::bevy::math::IVec2::new(tile.px[0] as i32, -tile.px[1] as i32 - layer_dimensions_px.y - 1);
         let src_px = ::bevy::math::IVec2::new(tile.src[0] as i32, tile.src[1] as i32);
         let id = tile.t;
 
@@ -226,7 +226,7 @@ impl<
         let id = ldtk_level.uid;
         let world_position_px = IVec2::new(
             ldtk_level.world_x as i32,
-            -ldtk_level.world_y as i32 + dimensions_px.y - 1,
+            -ldtk_level.world_y as i32 - dimensions_px.y - 1,
         );
 
         Ok(Level {
@@ -270,7 +270,7 @@ impl<EntityFields: DeserializeLdtkEntities> Layer<EntityFields> {
         let opacity = ldtk_layer.opacity;
         let total_offset_px = IVec2::new(
             ldtk_layer.px_total_offset_x as i32,
-            -ldtk_layer.px_total_offset_y as i32 + dimensions_cell.y as i32 * grid_size as i32,
+            -ldtk_layer.px_total_offset_y as i32 - dimensions_cell.y as i32 * grid_size as i32,
         );
         let visible = ldtk_layer.visible;
         let tileset_uid = ldtk_layer.tileset_def_uid;
