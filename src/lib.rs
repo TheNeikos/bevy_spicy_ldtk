@@ -15,6 +15,7 @@ pub trait DeserializeLDtkLayers: Sized {
 pub trait DeserializeLdtkEntities: Sized {
     fn deserialize_ldtk(
         instances: &[ldtk2::EntityInstance],
+        parent_size_grid: ::bevy::math::IVec2,
         parent_size_px: ::bevy::math::IVec2,
     ) -> LdtkResult<Self>;
 }
@@ -89,8 +90,10 @@ impl Tile {
         let flip_x = tile.f & 0x1 == 1;
         let flip_y = tile.f & 0x2 == 1;
 
-        let position_px =
-            ::bevy::math::IVec2::new(tile.px[0] as i32, -tile.px[1] as i32 - layer_dimensions_px.y - 1);
+        let position_px = ::bevy::math::IVec2::new(
+            tile.px[0] as i32,
+            -tile.px[1] as i32 - layer_dimensions_px.y - 1,
+        );
         let src_px = ::bevy::math::IVec2::new(tile.src[0] as i32, tile.src[1] as i32);
         let id = tile.t;
 
@@ -295,6 +298,7 @@ impl<EntityFields: DeserializeLdtkEntities> Layer<EntityFields> {
             "Entities" => {
                 let entities = EntityFields::deserialize_ldtk(
                     &ldtk_layer.entity_instances,
+                    dimensions_cell,
                     dimensions_cell * grid_size as i32,
                 )?;
 
