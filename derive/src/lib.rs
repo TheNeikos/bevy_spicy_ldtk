@@ -270,9 +270,9 @@ fn define_entities(ldtk_entities: &[EntityDefinition]) -> TokenStream {
             impl #ident {
                 fn load(entity: &::bevy_spicy_ldtk::private::ldtk2::EntityInstance, parent_size_grid: ::bevy::math::IVec2, parent_size_px: ::bevy::math::IVec2) -> ::bevy_spicy_ldtk::error::LdtkResult<Self> {
                     let dimensions_px = ::bevy::math::IVec2::new(entity.width as i32, entity.height as i32);
-                    let position_cell = ::bevy::math::IVec2::new(entity.grid[0] as i32, parent_size_grid.y - entity.grid[1] as i32);
-                    let pivot = ::bevy::math::Vec2::new(entity.pivot[0] as f32, entity.pivot[1] as f32);
-                    let position_px = ::bevy::math::IVec2::new(entity.px[0] as i32, parent_size_px.y - entity.px[1] as i32);
+                    let position_cell = ::bevy::math::IVec2::new(entity.grid[0] as i32, parent_size_grid.y - entity.grid[1] as i32 - 1);
+                    let pivot = ::bevy::math::Vec2::new(entity.pivot[0] as f32, 1.0 - entity.pivot[1] as f32);
+                    let position_px = ::bevy::math::IVec2::new(entity.px[0] as i32, parent_size_px.y - entity.px[1] as i32 - 1);
                     let fields = <#custom_ident as ::bevy_spicy_ldtk::DeserializeLdtkFields>::deserialize_ldtk(&entity.field_instances)?;
 
                     Ok(#ident {

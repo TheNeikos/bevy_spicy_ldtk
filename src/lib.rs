@@ -90,10 +90,8 @@ impl Tile {
         let flip_x = tile.f & 0x1 == 1;
         let flip_y = tile.f & 0x2 == 1;
 
-        let position_px = ::bevy::math::IVec2::new(
-            tile.px[0] as i32,
-            -tile.px[1] as i32 - layer_dimensions_px.y,
-        );
+        let position_px =
+            ::bevy::math::IVec2::new(tile.px[0] as i32, layer_dimensions_px.y - tile.px[1] as i32 - 1);
         let src_px = ::bevy::math::IVec2::new(tile.src[0] as i32, tile.src[1] as i32);
         let id = tile.t;
 
