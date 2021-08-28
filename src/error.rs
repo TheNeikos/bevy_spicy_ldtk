@@ -2,6 +2,8 @@
 pub enum LdtkError {
     #[error("An error occured while deserializing")]
     Json(#[from] serde_json::Error),
+    #[error("An error occured while parsing a color")]
+    HexColor(#[from] bevy::render::color::HexColorError),
     #[error("One or more fields are missing in the LDTK file")]
     MissingFieldsForEntities,
     #[error("One or more fields are missing in the LDTK file")]

@@ -372,4 +372,9 @@ pub mod private {
     pub fn parse_field<T: DeserializeOwned>(field: &serde_json::Value) -> LdtkResult<T> {
         Ok(serde_json::from_value(field.clone())?)
     }
+
+    pub fn parse_color(field: &serde_json::Value) -> LdtkResult<bevy::render::color::Color> {
+        let hex: String = serde_json::from_value(field.clone())?;
+        Ok(bevy::render::color::Color::hex(&hex[1..])?)
+    }
 }
