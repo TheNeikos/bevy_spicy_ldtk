@@ -69,6 +69,8 @@ fn generate_texture(
     commands.spawn_bundle(SpriteBundle {
         sprite: Sprite {
             size: vec2(500., 500.),
+            // Textures are y down, while bevy-spicy-ldtk is y up
+            flip_y: true,
             resize_mode: SpriteResizeMode::Manual,
             ..Default::default()
         },
