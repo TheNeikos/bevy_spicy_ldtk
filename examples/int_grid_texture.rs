@@ -49,12 +49,17 @@ fn generate_texture(
     let mut colors = vec![[0, 0, 0, 0]];
     colors.extend(value_definitions.iter().map(|def| {
         let c = def.color;
-        [c.r(), c.g(), c.b(), c.a()].map(|v| (v * 255.) as u8)
+        [
+            (c.r() * 255.) as u8,
+            (c.g() * 255.) as u8,
+            (c.b() * 255.) as u8,
+            (c.a() * 255.) as u8,
+        ]
     }));
 
     let buffer = values.iter().flat_map(|i| colors[*i as usize]).collect();
 
-    let dimension = layer.dimensions_cell.as_u32();
+    let dimension = layer.dimensions_cell.as_uvec2();
     let mut texture = Texture::new(
         Extent3d::new(dimension.x, dimension.y, 1),
         TextureDimension::D2,

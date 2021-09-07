@@ -235,14 +235,7 @@ fn define_entities(ldtk_entities: &[EntityDefinition]) -> TokenStream {
 
                     #(
                         let tmp: Option<Result<Option<#custom_types>,_>> = instances.iter().find(|field| field.identifier == #custom_idents)
-                            .map(|field| {
-                                field.value.as_ref()
-                                    .map(|value| match field.field_instance_type.as_ref() {
-                                        "Color" => ::bevy_spicy_ldtk::private::parse_color(value),
-                                        _ => ::bevy_spicy_ldtk::private::parse_field(value)
-                                    })
-                                    .transpose()
-                            });
+                            .map(|field| field.value.as_ref().map(::bevy_spicy_ldtk::private::parse_field).transpose());
 
                         #custom_names = match tmp {
                             None => return Err(::bevy_spicy_ldtk::error::LdtkError::MissingFieldsForEntities),

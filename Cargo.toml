@@ -11,7 +11,7 @@ license = "MIT OR Apache-2.0"
 members = ["derive"]
 
 [features]
-default = ["bevy_ecs_tilemap"]
+default = []
 
 [dependencies]
 bevy-spicy-ldtk-derive = { path = "./derive" }
@@ -21,7 +21,6 @@ thiserror = "1.0.26"
 serde_json = "1.0.66"
 serde = "1.0.127"
 bevy_spicy_aseprite = { git = "https://github.com/TheNeikos/bevy-spicy-aseprite.git" }
-bevy_ecs_tilemap = { optional = true, git = "https://github.com/TheNeikos/bevy_ecs_tilemap", branch = "bevy-track" }
 
 [dev-dependencies]
 bevy = { git = "https://github.com/bevyengine/bevy" }

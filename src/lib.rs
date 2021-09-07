@@ -90,8 +90,10 @@ impl Tile {
         let flip_x = tile.f & 0x1 == 1;
         let flip_y = tile.f & 0x2 == 1;
 
-        let position_px =
-            ::bevy::math::IVec2::new(tile.px[0] as i32, layer_dimensions_px.y - tile.px[1] as i32 - 1);
+        let position_px = ::bevy::math::IVec2::new(
+            tile.px[0] as i32,
+            layer_dimensions_px.y - tile.px[1] as i32 - 1,
+        );
         let src_px = ::bevy::math::IVec2::new(tile.src[0] as i32, tile.src[1] as i32);
         let id = tile.t;
 
@@ -369,12 +371,17 @@ pub mod private {
     pub use ldtk2;
     pub use serde::Deserialize;
 
-    pub fn parse_field<T: DeserializeOwned>(field: &serde_json::Value) -> LdtkResult<T> {
-        Ok(serde_json::from_value(field.clone())?)
-    }
+    pub fn parse_field<T: DeserializeOwned + 'static>(field: &serde_json::Value) -> LdtkResult<T> {
+        if std::any::TypeId::of::<T>() == std::any::TypeId::of::<bevy::render::color::Color>() {
+            let hex: String = serde_json::from_value(field.clone())?;
 
-    pub fn parse_color(field: &serde_json::Value) -> LdtkResult<bevy::render::color::Color> {
-        let hex: String = serde_json::from_value(field.clone())?;
-        Ok(bevy::render::color::Color::hex(&hex[1..])?)
+            let color = bevy::render::color::Color::hex(&hex[1..])?;
+
+            let new_field = serde_json::to_value(color)?;
+
+            Ok(serde_json::from_value(new_field)?)
+        } else {
+            Ok(serde_json::from_value(field.clone())?)
+        }
     }
 }
