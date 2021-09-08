@@ -45,6 +45,9 @@ pub fn ldtk(input: TStream) -> TStream {
 
     let aseprite_tilesets = define_aseprite_tilesets(&path.value(), &ldtk.defs.tilesets);
 
+    let uuid_bytes = uuid::Uuid::new_v4().as_bytes().to_vec();
+
+
     let expanded = quote! {
         #vis mod #name {
 
@@ -62,7 +65,15 @@ pub fn ldtk(input: TStream) -> TStream {
                 #aseprite_tilesets
             }
 
+            #[derive(Debug, Default, Clone)]
+            pub struct WorldType;
+
+            impl ::bevy_spicy_ldtk::private::TypeUuid for WorldType {
+                const TYPE_UUID: ::bevy_spicy_ldtk::private::Uuid = ::bevy_spicy_ldtk::private::Uuid::from_bytes([#(#uuid_bytes),*]);
+            }
+
             pub type Project = ::bevy_spicy_ldtk::World<
+                WorldType,
                 LevelFields,
                 ProjectEntities,
                 Layers
@@ -81,7 +92,6 @@ fn define_aseprite_tilesets(path: &str, tilesets: &[TilesetDefinition]) -> Token
             path.push(&def.rel_path);
 
             let path = path.to_str().unwrap();
-            println!("{}", path);
 
             let ident = format_ident!("{}", def.identifier.to_camel_case());
 

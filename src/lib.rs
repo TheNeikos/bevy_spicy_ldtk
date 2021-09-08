@@ -1,10 +1,63 @@
 use std::marker::PhantomData;
 
-use bevy::{math::IVec2, utils::HashMap};
+use bevy::{
+    asset::{AssetLoader, LoadedAsset},
+    math::IVec2,
+    prelude::{AddAsset, Plugin},
+    reflect::TypeUuid,
+    utils::HashMap,
+};
 pub use bevy_spicy_ldtk_derive::ldtk;
 use error::{LdtkError, LdtkResult};
 
 pub mod error;
+
+#[derive(Debug)]
+pub struct LdtkPlugin<T: DeserializeLdtk + bevy::asset::Asset>(PhantomData<T>);
+
+impl<T: DeserializeLdtk + bevy::asset::Asset> Default for LdtkPlugin<T> {
+    fn default() -> Self {
+        Self(Default::default())
+    }
+}
+
+impl<T: DeserializeLdtk + bevy::asset::Asset + Send + Sync + 'static> Plugin for LdtkPlugin<T> {
+    fn build(&self, app: &mut bevy::prelude::App) {
+        app.add_asset_loader(LdtkLoader::<T>::default());
+    }
+}
+
+#[derive(Debug)]
+struct LdtkLoader<T: DeserializeLdtk + bevy::asset::Asset>(PhantomData<T>);
+
+impl<T: DeserializeLdtk + bevy::asset::Asset> Default for LdtkLoader<T> {
+    fn default() -> Self {
+        Self(Default::default())
+    }
+}
+
+impl<T: DeserializeLdtk + bevy::asset::Asset + Send + Sync + 'static> AssetLoader
+    for LdtkLoader<T>
+{
+    fn load<'a>(
+        &'a self,
+        bytes: &'a [u8],
+        load_context: &'a mut bevy::asset::LoadContext,
+    ) -> bevy::asset::BoxedFuture<'a, Result<(), anyhow::Error>> {
+        Box::pin(async move {
+            let ldtk_text = String::from_utf8(bytes.to_vec())?;
+            let ldtk = ldtk2::Ldtk::from_str(&ldtk_text)?;
+            let ldtk = T::deserialize_ldtk(&ldtk)?;
+
+            load_context.set_default_asset(LoadedAsset::new(ldtk));
+            Ok(())
+        })
+    }
+
+    fn extensions(&self) -> &[&str] {
+        &["ldtk"]
+    }
+}
 
 pub trait DeserializeLDtkLayers: Sized {
     type Entities: DeserializeLdtkEntities;
@@ -30,6 +83,7 @@ pub trait DeserializeLdtk: Sized {
 
 #[derive(Debug)]
 pub struct World<
+    WorldType: TypeUuid,
     LevelFields: DeserializeLdtkFields,
     Entities: DeserializeLdtkEntities,
     Layers: DeserializeLDtkLayers<Entities = Entities>,
@@ -38,13 +92,15 @@ pub struct World<
     pub tilesets: HashMap<i64, Tileset>,
     pub layer_definitions: HashMap<i64, LayerDefinition>,
     _entities: PhantomData<Entities>,
+    _world_type: PhantomData<WorldType>,
 }
 
 impl<
+        WorldType: TypeUuid,
         LevelFields: DeserializeLdtkFields,
         Entities: DeserializeLdtkEntities,
         Layers: DeserializeLDtkLayers<Entities = Entities>,
-    > DeserializeLdtk for World<LevelFields, Entities, Layers>
+    > DeserializeLdtk for World<WorldType, LevelFields, Entities, Layers>
 {
     fn deserialize_ldtk(ldtk: &ldtk2::Ldtk) -> LdtkResult<Self> {
         let levels = ldtk
@@ -72,8 +128,18 @@ impl<
             tilesets,
             layer_definitions,
             _entities: PhantomData,
+            _world_type: PhantomData,
         })
     }
+}
+impl<
+        WorldType: TypeUuid,
+        LevelFields: DeserializeLdtkFields,
+        Entities: DeserializeLdtkEntities,
+        Layers: DeserializeLDtkLayers<Entities = Entities>,
+    > TypeUuid for World<WorldType, LevelFields, Entities, Layers>
+{
+    const TYPE_UUID: bevy::reflect::Uuid = WorldType::TYPE_UUID;
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -367,6 +433,8 @@ pub mod private {
     use serde::de::DeserializeOwned;
 
     // Re-exports for the derive crate
+    pub use bevy::reflect::TypeUuid;
+    pub use bevy::reflect::Uuid;
     pub use bevy_spicy_aseprite::aseprite;
     pub use ldtk2;
     pub use serde::Deserialize;

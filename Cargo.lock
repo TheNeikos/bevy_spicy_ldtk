@@ -240,13 +240,14 @@ name = "bevy-spicy-ldtk-derive"
 version = "0.1.0"
 dependencies = [
  "heck",
- "ldtk2",
+ "ldtk2 0.3.0",
  "nom 6.2.1",
  "proc-macro-error",
  "proc-macro2",
  "quote",
  "serde_json",
  "syn",
+ "uuid",
 ]
 
 [[package]]
@@ -601,10 +602,11 @@ dependencies = [
 name = "bevy_spicy_ldtk"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "bevy",
  "bevy-spicy-ldtk-derive",
  "bevy_spicy_aseprite",
- "ldtk2",
+ "ldtk2 0.5.1",
  "serde",
  "serde_json",
  "thiserror",
@@ -2070,6 +2072,17 @@ checksum = "e2c35736c8f14bbf34ddcf17adeda3ede5689f53eb6894deb68619fe21dd96e7"
 dependencies = [
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "ldtk2"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1500d66fe47afe87b60457d6556deef63daa81e6e85630dc3143172503232fc5"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror",
 ]
 
 [[package]]
