@@ -23,6 +23,7 @@ impl<T: DeserializeLdtk + bevy::asset::Asset> Default for LdtkPlugin<T> {
 
 impl<T: DeserializeLdtk + bevy::asset::Asset + Send + Sync + 'static> Plugin for LdtkPlugin<T> {
     fn build(&self, app: &mut bevy::prelude::App) {
+        app.add_asset::<T>();
         app.add_asset_loader(LdtkLoader::<T>::default());
     }
 }
