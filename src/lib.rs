@@ -154,8 +154,8 @@ pub struct Tile {
 
 impl Tile {
     fn load(tile: &ldtk2::TileInstance, layer_dimensions_px: IVec2) -> LdtkResult<Self> {
-        let flip_x = tile.f & 0x1 == 1;
-        let flip_y = tile.f & 0x2 == 1;
+        let flip_x = tile.f & 0x1 == 0x1;
+        let flip_y = tile.f & 0x2 == 0x2;
 
         let position_px = ::bevy::math::IVec2::new(
             tile.px[0] as i32,
